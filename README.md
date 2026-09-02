@@ -18,7 +18,7 @@ Der Schwerpunkt liegt dabei weniger auf einer vollständigen wissenschaftlichen 
 
 Das zentrale Ergebnis des Projekts ist ein interaktives Power-BI-Dashboard zur Analyse des deutschen Strommarktes.
 
-![Energy Market Dashboard](screenshots/Strommarkt_Deutschland_Marktübersicht.png)
+![Energy Market Dashboard](screenshots/Strommarkt_Deutschland_Marktübersicht.PNG)
 
 Das Dashboard umfasst unter anderem:
 

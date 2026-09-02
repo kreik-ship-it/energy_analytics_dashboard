@@ -2,7 +2,7 @@
 
 Kleines Versuchs- und Demonstrationsprojekt zur Analyse des deutschen Strommarktes mit Python, SQLite und Power BI.
 
-Das Projekt dient dazu, einen vollständigen Data-Analytics-Workflow von der Datenerfassung über die Datenaufbereitung und Speicherung bis zur interaktiven Visualisierung umzusetzen und verschiedene Ansätze im Bereich Energy Analytics auszuprobieren.
+Das Projekt dient dazu, einen praktischen Data-Analytics-Workflow von der Datenerfassung über die Datenaufbereitung und Speicherung bis zur interaktiven Visualisierung umzusetzen und verschiedene Analysemöglichkeiten im Bereich der Energiedaten zu untersuchen.
 
 > **Hinweis:** Das Projekt befindet sich noch in Entwicklung und wird laufend erweitert und angepasst. Es handelt sich bewusst um ein kleines Demonstrationsprojekt und nicht um eine vollständig produktionsreife Datenpipeline.
 

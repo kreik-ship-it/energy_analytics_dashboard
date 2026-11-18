@@ -1,0 +1,998 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strommarkt Deutschland</title>
+<meta name="description" content="Interaktives Dashboard zum deutschen Day-Ahead-Strommarkt 2023–2025: Preise, Erneuerbare, negative Preise und ML-Preisprognose.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f4f4f1;
+  --surface: #fcfcfb;
+  --surface-2: #f0efeb;
+  --border: #e4e3df;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --text-3: #7d7c77;
+  --grid: #e9e8e4;
+  --accent: #2a78d6;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s5: #e87ba4; --s6: #6250d6;
+  --neutral: #8c8b86;
+  --good: #008300; --bad: #e34948;
+  --seq: #cde2fb,#9ec5f4,#6da7ec,#3987e5,#256abf,#184f95,#0d366b;
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121211; --surface: #1a1a19; --surface-2: #232321; --border: #2e2e2c;
+    --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e87; --grid: #2a2a28;
+    --accent: #3987e5;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --s5: #d55181; --s6: #9085e9;
+    --neutral: #7d7c77; --good: #0ca30c; --bad: #e66767;
+    --seq: #1f2a38,#173f6e,#1c5cab,#2a78d6,#5598e7,#86b6ef,#cde2fb;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface: #1a1a19; --surface-2: #232321; --border: #2e2e2c;
+  --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e87; --grid: #2a2a28;
+  --accent: #3987e5;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --s5: #d55181; --s6: #9085e9;
+  --neutral: #7d7c77; --good: #0ca30c; --bad: #e66767;
+  --seq: #1f2a38,#173f6e,#1c5cab,#2a78d6,#5598e7,#86b6ef,#cde2fb;
+  --shadow: none;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 14px/1.5 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 0 24px; }
+
+header.top { padding: 28px 0 18px; }
+.top-row { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+h1 { font-size: 28px; line-height: 1.2; margin: 4px 0 6px; letter-spacing: -.01em; }
+.lede { color: var(--text-2); margin: 0; max-width: 760px; }
+.top-actions { display: flex; gap: 8px; align-items: center; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer; text-decoration: none;
+}
+.btn:hover { background: var(--surface-2); }
+
+.bar {
+  position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px); border-bottom: 1px solid var(--border);
+}
+.bar-inner { display: flex; gap: 12px 20px; align-items: center; flex-wrap: wrap; padding: 10px 0; }
+nav.tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+nav.tabs button {
+  border: 0; background: none; font: inherit; font-weight: 500; color: var(--text-2);
+  padding: 7px 12px; border-radius: 7px; cursor: pointer; white-space: nowrap;
+}
+nav.tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); outline: 1px solid var(--border); }
+.filters { display: flex; gap: 10px; flex-wrap: wrap; margin-left: auto; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg button {
+  border: 0; background: none; font: inherit; font-size: 12.5px; color: var(--text-2);
+  padding: 5px 10px; cursor: pointer; border-right: 1px solid var(--border);
+}
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.seg-label { font-size: 11px; color: var(--text-3); display: block; margin: 0 0 2px 2px; }
+
+main { padding: 20px 0 48px; }
+section.panel { display: none; }
+section.panel.active { display: block; }
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(12, 1fr); }
+.c12 { grid-column: span 12; } .c8 { grid-column: span 8; } .c7 { grid-column: span 7; }
+.c6 { grid-column: span 6; } .c5 { grid-column: span 5; } .c4 { grid-column: span 4; }
+@media (max-width: 980px) { .c8, .c7, .c6, .c5, .c4 { grid-column: span 12; } }
+
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px 18px; box-shadow: var(--shadow); min-width: 0;
+}
+.card h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.card .sub { margin: 2px 0 0; color: var(--text-2); font-size: 12.5px; }
+.card-head { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.chips { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.chip { font-size: 10.5px; color: var(--text-3); border: 1px solid var(--border); border-radius: 99px; padding: 1px 7px; white-space: nowrap; }
+.chart { width: 100%; height: 320px; margin-top: 8px; }
+.chart.tall { height: 420px; }
+.chart.short { height: 240px; }
+.insight {
+  margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: var(--surface-2);
+  color: var(--text-2); font-size: 13px;
+}
+.insight b { color: var(--text); }
+
+.kpis { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); margin-bottom: 16px; }
+.kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); }
+.kpi .label { font-size: 12px; color: var(--text-2); display: flex; gap: 4px; align-items: center; }
+.kpi .value { font-size: 26px; font-weight: 650; letter-spacing: -.01em; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.kpi .value small { font-size: 13px; font-weight: 500; color: var(--text-2); margin-left: 3px; }
+.kpi .foot { font-size: 12px; color: var(--text-3); margin-top: 2px; min-height: 18px; font-variant-numeric: tabular-nums; }
+.delta-up::before { content: "▲ "; } .delta-down::before { content: "▼ "; }
+.info { cursor: help; color: var(--text-3); border: 1px solid var(--border); border-radius: 50%; width: 14px; height: 14px; font-size: 9.5px; display: inline-grid; place-items: center; }
+
+table.data { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; font-variant-numeric: tabular-nums; }
+table.data th { text-align: left; font-weight: 600; color: var(--text-2); border-bottom: 1px solid var(--border); padding: 6px 8px; font-size: 12px; }
+table.data td { border-bottom: 1px solid var(--grid); padding: 6px 8px; }
+table.data td.num, table.data th.num { text-align: right; }
+.table-scroll { overflow-x: auto; }
+
+.steps { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); margin-top: 10px; }
+.step { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--surface-2); }
+.step .n { font-size: 11px; font-weight: 700; color: var(--accent); letter-spacing: .05em; }
+.step h4 { margin: 2px 0 4px; font-size: 14px; }
+.step p { margin: 0; font-size: 12.5px; color: var(--text-2); }
+.prose { color: var(--text-2); max-width: 900px; }
+.prose li { margin: 4px 0; }
+footer { color: var(--text-3); font-size: 12px; padding: 24px 0 40px; border-top: 1px solid var(--border); }
+.loading { padding: 80px 0; text-align: center; color: var(--text-2); }
+@media (max-width: 640px) {
+  .wrap { padding: 0 16px; }
+  .bar { position: static; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .kpi { padding: 12px; }
+  .kpi .foot { font-size: 11px; }
+  h1 { font-size: 23px; }
+  .filters { margin-left: 0; }
+  .chart { height: 280px; } .chart.tall { height: 340px; }
+  .kpi .value { font-size: 20px; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-row">
+    <div>
+      <div class="eyebrow">Day-Ahead-Markt · Gebotszone DE-LU</div>
+      <h1>Strommarkt Deutschland 2023–2025</h1>
+      <p class="lede">26.304 Stunden Day-Ahead-Preise, Wind- und Solarerzeugung sowie Stromlast: Preisbildung, Merit-Order-Effekt, negative Preise und eine Machine-Learning-Preisprognose.</p>
+    </div>
+    <div class="top-actions">
+      <button class="btn" id="themeBtn" type="button" title="Hell/Dunkel umschalten">◐ <span id="themeLabel">Auto</span></button>
+      <a class="btn" href="https://github.com/kreik-ship-it/energy_analytics_dashboard" target="_blank" rel="noopener">Code auf GitHub ↗</a>
+    </div>
+  </div>
+</header>
+
+<div class="bar">
+  <div class="wrap bar-inner">
+    <nav class="tabs" role="tablist" aria-label="Ansichten">
+      <button role="tab" data-tab="overview" aria-selected="true">Marktüberblick</button>
+      <button role="tab" data-tab="patterns" aria-selected="false">Preismuster</button>
+      <button role="tab" data-tab="renewables" aria-selected="false">Erneuerbare &amp; Merit-Order</button>
+      <button role="tab" data-tab="negative" aria-selected="false">Negative Preise</button>
+      <button role="tab" data-tab="forecast" aria-selected="false">Preisprognose</button>
+      <button role="tab" data-tab="method" aria-selected="false">Methodik</button>
+    </nav>
+    <div class="filters" id="filters">
+      <div><span class="seg-label">Jahr</span><div class="seg" data-filter="year"></div></div>
+      <div><span class="seg-label">Jahreszeit</span><div class="seg" data-filter="season"></div></div>
+      <div><span class="seg-label">Tagtyp</span><div class="seg" data-filter="daytype"></div></div>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+  <div id="loading" class="loading">Daten werden geladen …</div>
+
+  <!-- 1 Marktüberblick -->
+  <section class="panel active" id="tab-overview">
+    <div class="kpis" id="kpis"></div>
+    <div class="grid">
+      <div class="card c12">
+        <div class="card-head"><div><h3>Täglicher Day-Ahead-Preis</h3><p class="sub">Tagesmittel und gleitender 30-Tage-Durchschnitt · Tooltip zeigt Tiefst- und Höchstwert · Zoom über den Regler</p></div><div class="chips" data-uses="year"></div></div>
+        <div class="chart" id="chDaily"></div>
+        <div class="chart short" id="chResidual"></div>
+        <div class="insight">Der Preis folgt der <b>Residuallast</b> (Last minus Wind und Solar). Beide Diagramme zoomen synchron: Preisspitzen wie am 12.12.2024 (936 €/MWh) fallen in Phasen hoher Residuallast („Dunkelflaute“).</div>
+      </div>
+      <div class="card c6">
+        <div class="card-head"><div><h3>Ø Preis nach Monat</h3><p class="sub">€/MWh je Kalendermonat und Jahr</p></div><div class="chips" data-uses="daytype"></div></div>
+        <div class="chart" id="chMonthYear"></div>
+      </div>
+      <div class="card c6">
+        <div class="card-head"><div><h3>Erzeugung aus Wind und Solar vs. Last</h3><p class="sub">TWh pro Monat</p></div><div class="chips" data-uses="year"></div></div>
+        <div class="chart" id="chMix"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 Preismuster -->
+  <section class="panel" id="tab-patterns">
+    <div class="grid">
+      <div class="card c7">
+        <div class="card-head"><div><h3>Tagesprofil je Jahreszeit („Duck Curve“)</h3><p class="sub">Ø Preis je Stunde (Ortszeit), €/MWh</p></div><div class="chips" data-uses="year daytype"></div></div>
+        <div class="chart tall" id="chDuck"></div>
+        <div class="insight" id="duckInsight"></div>
+      </div>
+      <div class="card c5">
+        <div class="card-head"><div><h3>Stunde × Monat</h3><p class="sub">Ø Preis, €/MWh</p></div><div class="chips" data-uses="year daytype"></div></div>
+        <div class="chart tall" id="chHeatMonth"></div>
+      </div>
+      <div class="card c6">
+        <div class="card-head"><div><h3>Stunde × Wochentag</h3><p class="sub">Ø Preis, €/MWh</p></div><div class="chips" data-uses="year season"></div></div>
+        <div class="chart" id="chHeatDow"></div>
+      </div>
+      <div class="card c6">
+        <div class="card-head"><div><h3>Preisverteilung</h3><p class="sub">Anzahl Stunden je 10-€-Klasse</p></div><div class="chips" data-uses="year season daytype"></div></div>
+        <div class="chart" id="chHist"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 Erneuerbare -->
+  <section class="panel" id="tab-renewables">
+    <div class="grid">
+      <div class="card c7">
+        <div class="card-head"><div><h3>Merit-Order: Preis vs. Residuallast</h3><p class="sub">Jeder Punkt ist eine Stunde (Stichprobe) · Linie = Median je 2,5-GW-Klasse</p></div><div class="chips" data-uses="year season daytype"></div></div>
+        <div class="chart tall" id="chScatter"></div>
+      </div>
+      <div class="card c5">
+        <div class="card-head"><div><h3>Ø Preis nach Anteil Wind + Solar</h3><p class="sub">Ø €/MWh je Klasse des Anteils von Wind + Solar an der Last</p></div><div class="chips" data-uses="year season daytype"></div></div>
+        <div class="chart tall" id="chShare"></div>
+      </div>
+      <div class="card c12">
+        <div class="card-head"><div><h3>Marktwerte: Base-Preis vs. Solar- und Wind-Capture-Preis</h3><p class="sub">Erzeugungsgewichteter Ø Preis, den eine MWh Solar- bzw. Windstrom erzielt, €/MWh pro Monat</p></div><div class="chips" data-uses="year daytype"></div></div>
+        <div class="chart" id="chCapture"></div>
+        <div class="insight" id="captureInsight"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 Negative Preise -->
+  <section class="panel" id="tab-negative">
+    <div class="grid">
+      <div class="card c12">
+        <div class="card-head"><div><h3>Kalender: Stunden mit negativem Preis pro Tag</h3><p class="sub">Je dunkler, desto mehr Stunden unter 0 €/MWh</p></div><div class="chips" data-uses="year"></div></div>
+        <div class="chart" id="chCalendar"></div>
+      </div>
+      <div class="card c6">
+        <div class="card-head"><div><h3>Negative Stunden nach Uhrzeit</h3><p class="sub">Anzahl Stunden mit Preis &lt; 0</p></div><div class="chips" data-uses="year season daytype"></div></div>
+        <div class="chart" id="chNegHour"></div>
+      </div>
+      <div class="card c6">
+        <div class="card-head"><div><h3>Negative Stunden pro Monat</h3><p class="sub">Vergleich der Jahre</p></div><div class="chips" data-uses="daytype"></div></div>
+        <div class="chart" id="chNegMonth"></div>
+      </div>
+      <div class="card c12">
+        <div class="card-head"><div><h3>Tage mit den meisten negativen Preisstunden</h3><p class="sub">Top 10 im gewählten Zeitraum</p></div><div class="chips" data-uses="year season daytype"></div></div>
+        <div class="table-scroll"><table class="data" id="tblNeg"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 Prognose -->
+  <section class="panel" id="tab-forecast">
+    <div class="kpis" id="fcKpis"></div>
+    <div class="grid">
+      <div class="card c12">
+        <div class="card-head"><div><h3>Ist-Preis vs. XGBoost-Prognose, Testjahr 2025</h3><p class="sub">Out-of-sample · trainiert auf 2023–2024 · Zoom über den Regler</p></div><div class="chips"><span class="chip">Filter ohne Wirkung</span></div></div>
+        <div class="chart tall" id="chForecast"></div>
+      </div>
+      <div class="card c5">
+        <div class="card-head"><div><h3>Modellvergleich</h3><p class="sub">Mittlerer absoluter Fehler (MAE), €/MWh · niedriger ist besser</p></div></div>
+        <div class="chart" id="chModels"></div>
+      </div>
+      <div class="card c7">
+        <div class="card-head"><div><h3>Feature Importance</h3><p class="sub">XGBoost, Anteil am Gain</p></div></div>
+        <div class="chart" id="chImportance"></div>
+      </div>
+      <div class="card c6">
+        <div class="card-head"><div><h3>Prognosefehler nach Stunde</h3><p class="sub">MAE, €/MWh</p></div></div>
+        <div class="chart short" id="chErrHour"></div>
+      </div>
+      <div class="card c6">
+        <div class="card-head"><div><h3>Prognosefehler nach Monat</h3><p class="sub">MAE, €/MWh</p></div></div>
+        <div class="chart short" id="chErrMonth"></div>
+      </div>
+      <div class="card c12">
+        <h3>Warum dieses Setup realistisch ist</h3>
+        <ul class="prose">
+          <li>Die Day-Ahead-Auktion für Tag <i>D</i> schließt am Mittag von <i>D−1</i>. Preise von Tag <i>D</i> sind dann noch unbekannt, deshalb verwendet das Modell nur Preis-Lags ab 24 Stunden. Der Preis der Vorstunde wäre ein Informationsleck.</li>
+          <li>Wind, Solar und Last gehen als Ist-Werte ein, also als Näherung für die am Vortag verfügbaren Prognosen. Die Güte ist daher eine Obergrenze.</li>
+          <li>Der Split ist strikt zeitlich: Training 2023–2024, Test 2025. Die Hyperparameter wurden nicht auf dem Testjahr optimiert.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 Methodik -->
+  <section class="panel" id="tab-method">
+    <div class="grid">
+      <div class="card c12">
+        <h3>Datenpipeline</h3>
+        <p class="sub">Reproduzierbar über <code>python -m energy_analytics.pipeline --refresh</code> · 24 automatisierte Tests in der CI</p>
+        <div class="steps">
+          <div class="step"><div class="n">01 EXTRACT</div><h4>Energy-Charts API</h4><p>Day-Ahead-Preise sowie Erzeugung und Last, jahresweise abgerufen, mit Retry und Backoff bei Rate-Limits.</p></div>
+          <div class="step"><div class="n">02 TRANSFORM</div><h4>Stundenreihe in UTC</h4><p>15-Minuten-Werte (Preise seit 10/2025) werden zu Stundenmitteln. Ohne Lücken oder Duplikate bei der Zeitumstellung.</p></div>
+          <div class="step"><div class="n">03 FEATURES</div><h4>Fachliche Merkmale</h4><p>Ortszeit-Kalender, Residuallast, EE-Anteil, Lags und Rolling-Werte ohne Look-Ahead-Bias.</p></div>
+          <div class="step"><div class="n">04 LOAD</div><h4>SQLite-Sternschema</h4><p><code>energy_data</code> + <code>dim_date</code>, Views und 8 SQL-Analysen. Quelle für Power BI und dieses Dashboard.</p></div>
+          <div class="step"><div class="n">05 MODEL</div><h4>Preisprognose</h4><p>Naive Baselines, lineare Regression und XGBoost mit zeitlichem Train/Test-Split.</p></div>
+        </div>
+      </div>
+      <div class="card c6">
+        <h3>Datenqualität</h3>
+        <div class="table-scroll"><table class="data" id="tblQuality"></table></div>
+      </div>
+      <div class="card c6">
+        <h3>Definitionen</h3>
+        <table class="data">
+          <tr><td><b>Base</b></td><td>Ø Preis über alle Stunden</td></tr>
+          <tr><td><b>Peak</b></td><td>Ø Preis Mo–Fr, 8–20 Uhr (EEX-Definition)</td></tr>
+          <tr><td><b>Residuallast</b></td><td>Last − Wind − Solar</td></tr>
+          <tr><td><b>EE-Anteil</b></td><td>(Wind + Solar) / Last; kann über 100 % liegen</td></tr>
+          <tr><td><b>Capture-Preis</b></td><td>Σ(Preis × Erzeugung) / Σ Erzeugung</td></tr>
+          <tr><td><b>Capture Rate</b></td><td>Capture-Preis / Base-Preis</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap" id="footer">Daten: Energy-Charts API (Fraunhofer ISE) · Bundesnetzagentur | SMARD.de · Lizenz CC BY 4.0</div>
+</footer>
+
+<script>
+(() => {
+"use strict";
+
+// ---------- Formatierung ----------
+const nf = (d = 0) => new Intl.NumberFormat("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
+const f0 = nf(0), f1 = nf(1), f2 = nf(2);
+const MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+const DOWS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+const SEASONS = ["Winter", "Frühling", "Sommer", "Herbst"];
+const seasonOfMonth = m => [0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 0][m];
+const FEATURE_LABELS = {
+  residual_load: "Residuallast", renewable_share_pct: "EE-Anteil", price_lag_24: "Preis Vortag (gleiche Stunde)",
+  price_lag_168: "Preis Vorwoche", price_prev_day_mean: "Ø Preis Vortag", price_prev_day_std: "Volatilität Vortag",
+  wind: "Wind", solar: "Solar", load: "Last", hour: "Stunde", day_of_week: "Wochentag", month: "Monat", is_weekend: "Wochenende",
+};
+
+// ---------- Theme ----------
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+let T = {};
+function readTheme() {
+  T = {
+    text: css("--text"), text2: css("--text-2"), text3: css("--text-3"), grid: css("--grid"),
+    surface: css("--surface"), border: css("--border"),
+    s: [css("--s1"), css("--s2"), css("--s3"), css("--s4"), css("--s5"), css("--s6")],
+    neutral: css("--neutral"), seq: css("--seq").split(",").map(s => s.trim()),
+  };
+  T.year = { 2023: T.s[0], 2024: T.s[1], 2025: T.s[2] };
+  T.season = { Winter: T.s[0], "Frühling": T.s[2], Sommer: T.s[1], Herbst: T.s[3] };
+}
+const themeModes = ["auto", "light", "dark"];
+let themeMode = "auto";
+try { themeMode = localStorage.getItem("ea-theme") || "auto"; } catch (e) {}
+function applyTheme() {
+  if (themeMode === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", themeMode);
+  document.getElementById("themeLabel").textContent = { auto: "Auto", light: "Hell", dark: "Dunkel" }[themeMode];
+}
+applyTheme();
+
+// ---------- Zustand ----------
+const state = { tab: "overview", year: "all", season: "all", daytype: "all" };
+const FILTERS = {
+  year: [["all", "Alle"], ["2023", "2023"], ["2024", "2024"], ["2025", "2025"]],
+  season: [["all", "Alle"], ...SEASONS.map(s => [s, s])],
+  daytype: [["all", "Alle"], ["workday", "Werktag"], ["weekend", "Wochenende"]],
+};
+const FILTER_NAMES = { year: "Jahr", season: "Jahreszeit", daytype: "Tagtyp" };
+
+let D, N, Y, M, DOW, DAYKEY, SEASON, PRICE, WIND, SOLAR, LOAD, RES, DAYS;
+const charts = {};
+
+// ---------- Daten vorbereiten ----------
+function prepare(data) {
+  D = data; const h = data.hourly; N = h.price.length;
+  const [y0, m0, d0] = data.meta.first_day.split("-").map(Number);
+  const base = Date.UTC(y0, m0 - 1, d0);
+  const nDays = h.day[N - 1] + 1;
+  DAYS = [];
+  for (let d = 0; d < nDays; d++) {
+    const dt = new Date(base + d * 864e5);
+    const yy = dt.getUTCFullYear(), mm = dt.getUTCMonth(), dd = dt.getUTCDate();
+    DAYS.push({ y: yy, m: mm, dow: (dt.getUTCDay() + 6) % 7,
+      key: `${yy}-${String(mm + 1).padStart(2, "0")}-${String(dd).padStart(2, "0")}`,
+      label: `${String(dd).padStart(2, "0")}.${String(mm + 1).padStart(2, "0")}.${yy}` });
+  }
+  Y = new Int16Array(N); M = new Int8Array(N); DOW = new Int8Array(N); SEASON = new Int8Array(N); DAYKEY = h.day;
+  PRICE = Float64Array.from(h.price); SOLAR = Float64Array.from(h.solar); LOAD = Float64Array.from(h.load);
+  WIND = new Float64Array(N); RES = new Float64Array(N);
+  for (let i = 0; i < N; i++) {
+    const di = DAYS[h.day[i]];
+    Y[i] = di.y; M[i] = di.m; DOW[i] = di.dow; SEASON[i] = seasonOfMonth(di.m);
+    WIND[i] = h.wind_on[i] + h.wind_off[i];
+    RES[i] = LOAD[i] - WIND[i] - SOLAR[i];
+  }
+}
+
+function idx(opts = {}) {
+  const use = opts.use || ["year", "season", "daytype"];
+  const yr = opts.year !== undefined ? opts.year : state.year;
+  const out = [];
+  for (let i = 0; i < N; i++) {
+    if (use.includes("year") && yr !== "all" && Y[i] !== +yr) continue;
+    if (use.includes("season") && state.season !== "all" && SEASONS[SEASON[i]] !== state.season) continue;
+    if (use.includes("daytype") && state.daytype !== "all") {
+      const we = DOW[i] >= 5;
+      if ((state.daytype === "weekend") !== we) continue;
+    }
+    out.push(i);
+  }
+  return out;
+}
+const mean = (ix, arr) => { let s = 0; for (const i of ix) s += arr[i]; return ix.length ? s / ix.length : NaN; };
+const capture = (ix, gen) => { let s = 0, g = 0; for (const i of ix) { s += PRICE[i] * gen[i]; g += gen[i]; } return g ? s / g : NaN; };
+const isPeak = i => DOW[i] < 5 && D.hourly.h[i] >= 8 && D.hourly.h[i] < 20;
+
+function kpiSet(ix) {
+  let min = Infinity, max = -Infinity, neg = 0, ren = 0, load = 0, minI = -1, maxI = -1;
+  const peak = [], off = [];
+  for (const i of ix) {
+    const p = PRICE[i];
+    if (p < min) { min = p; minI = i; } if (p > max) { max = p; maxI = i; }
+    if (p < 0) neg++;
+    ren += WIND[i] + SOLAR[i]; load += LOAD[i];
+    (isPeak(i) ? peak : off).push(i);
+  }
+  const base = mean(ix, PRICE);
+  // Ø Tagesspanne
+  const byDay = new Map();
+  for (const i of ix) { const k = DAYKEY[i]; const r = byDay.get(k) || [Infinity, -Infinity]; r[0] = Math.min(r[0], PRICE[i]); r[1] = Math.max(r[1], PRICE[i]); byDay.set(k, r); }
+  let spread = 0; for (const r of byDay.values()) spread += r[1] - r[0];
+  return { n: ix.length, base, peak: mean(peak, PRICE), off: mean(off, PRICE), min, max, minI, maxI, neg,
+    negShare: ix.length ? neg / ix.length * 100 : NaN, ren: load ? ren / load * 100 : NaN,
+    solarCR: capture(ix, SOLAR) / base * 100, windCR: capture(ix, WIND) / base * 100,
+    solarCap: capture(ix, SOLAR), windCap: capture(ix, WIND), spread: byDay.size ? spread / byDay.size : NaN };
+}
+const stamp = i => `${DAYS[DAYKEY[i]].label}, ${String(D.hourly.h[i]).padStart(2, "0")}:00`;
+
+// ---------- Chart-Grundlagen ----------
+function chart(id) {
+  if (!charts[id]) {
+    const el = document.getElementById(id);
+    charts[id] = echarts.init(el, null, { renderer: "canvas" });
+    new ResizeObserver(() => charts[id].resize()).observe(el);
+  }
+  return charts[id];
+}
+function baseOpt(extra = {}) {
+  return {
+    animationDuration: 400,
+    textStyle: { fontFamily: "Inter, system-ui, sans-serif", color: T.text2 },
+    grid: { left: 8, right: 16, top: 34, bottom: 8, containLabel: true },
+    tooltip: { trigger: "axis", backgroundColor: T.surface, borderColor: T.border, textStyle: { color: T.text, fontSize: 12 },
+      axisPointer: { type: "line", lineStyle: { color: T.text3 } }, confine: true },
+    legend: { top: 0, right: 0, textStyle: { color: T.text2 }, itemWidth: 14, itemHeight: 8, itemGap: 16, icon: "roundRect" },
+    ...extra,
+  };
+}
+const axisCommon = () => ({
+  axisLine: { lineStyle: { color: T.border } }, axisTick: { show: false },
+  axisLabel: { color: T.text2 }, splitLine: { lineStyle: { color: T.grid } }, nameTextStyle: { color: T.text3 },
+});
+const valAxis = (name, extra = {}) => ({ type: "value", name, ...axisCommon(), ...extra });
+const catAxis = (data, extra = {}) => ({ type: "category", data, ...axisCommon(), splitLine: { show: false }, ...extra });
+const zeroLine = () => ({ silent: true, symbol: "none", lineStyle: { color: T.text3, type: "solid", width: 1 }, label: { show: false }, data: [{ yAxis: 0 }] });
+const zoomSlider = (start, end) => ([
+  { type: "inside", start, end },
+  { type: "slider", start, end, height: 18, bottom: 4, borderColor: T.border, fillerColor: "rgba(42,120,214,.12)",
+    handleStyle: { color: T.surface, borderColor: T.text3 }, textStyle: { color: T.text3 }, dataBackground: { lineStyle: { color: T.text3 }, areaStyle: { color: T.grid } } },
+]);
+const tipRow = (color, name, value) =>
+  `<div style="display:flex;gap:8px;align-items:center;justify-content:space-between"><span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${color};margin-right:6px"></span>${name}</span><b style="font-variant-numeric:tabular-nums">${value}</b></div>`;
+
+// ---------- KPIs ----------
+function renderKpis() {
+  const ix = idx();
+  const k = kpiSet(ix);
+  let prev = null;
+  if (state.year !== "all" && +state.year > 2023) prev = kpiSet(idx({ year: String(+state.year - 1) }));
+  const delta = (cur, p, unit, digits = 1, goodWhenUp = null) => {
+    if (!prev || !isFinite(p)) return "";
+    const d = cur - p; const cls = d >= 0 ? "delta-up" : "delta-down";
+    return `<span class="${cls}">${nf(digits).format(Math.abs(d))}${unit}</span> ggü. ${+state.year - 1}`;
+  };
+  const tiles = [
+    ["Ø Base-Preis", f2.format(k.base), "€/MWh", delta(k.base, prev?.base, " €"), "Durchschnitt über alle Stunden"],
+    ["Ø Peak-Preis", f2.format(k.peak), "€/MWh", isFinite(k.off) ? `Off-Peak: ${f2.format(k.off)} €` : "", "Mo–Fr 8–20 Uhr"],
+    ["Höchster Preis", f2.format(k.max), "€/MWh", k.maxI >= 0 ? stamp(k.maxI) : "", ""],
+    ["Niedrigster Preis", f2.format(k.min), "€/MWh", k.minI >= 0 ? stamp(k.minI) : "", ""],
+    ["Negative Stunden", f0.format(k.neg), "", `${f1.format(k.negShare)} % aller Stunden` + (prev ? ` · ${delta(k.neg, prev.neg, "", 0)}` : ""), "Stunden mit Preis unter 0 €/MWh"],
+    ["Anteil Wind + Solar", f1.format(k.ren), "%", delta(k.ren, prev?.ren, " Pp."), "Erneuerbare Erzeugung (Wind + Solar) / Last"],
+    ["Solar Capture Rate", f0.format(k.solarCR), "%", `Marktwert ${f2.format(k.solarCap)} €/MWh`, "Erlös je MWh Solarstrom relativ zum Base-Preis"],
+    ["Ø tägliche Preisspanne", f0.format(k.spread), "€/MWh", "Höchste minus niedrigste Stunde", "Relevant für Batteriespeicher-Arbitrage"],
+  ];
+  document.getElementById("kpis").innerHTML = tiles.map(([l, v, u, foot, info]) =>
+    `<div class="kpi"><div class="label">${l}${info ? ` <span class="info" title="${info}">i</span>` : ""}</div>
+     <div class="value">${v}<small>${u}</small></div><div class="foot">${foot}</div></div>`).join("");
+}
+
+// ---------- Marktüberblick ----------
+function dailyAgg(ix) {
+  const map = new Map();
+  for (const i of ix) {
+    const d = DAYKEY[i]; let r = map.get(d);
+    if (!r) { r = { s: 0, n: 0, min: Infinity, max: -Infinity, res: 0 }; map.set(d, r); }
+    r.s += PRICE[i]; r.n++; r.min = Math.min(r.min, PRICE[i]); r.max = Math.max(r.max, PRICE[i]); r.res += RES[i];
+  }
+  const days = [...map.keys()].sort((a, b) => a - b);
+  return { days, rows: days.map(d => map.get(d)) };
+}
+function renderDaily() {
+  const { days, rows } = dailyAgg(idx({ use: ["year"] }));
+  const labels = days.map(d => DAYS[d].key);
+  const avg = rows.map(r => +(r.s / r.n).toFixed(2));
+  const mins = rows.map(r => r.min), spans = rows.map(r => +(r.max - r.min).toFixed(2));
+  const res = rows.map(r => +(r.res / r.n / 1000).toFixed(2));
+  const avg30 = avg.map((_, i) => { const a = avg.slice(Math.max(0, i - 29), i + 1); return +(a.reduce((s, v) => s + v, 0) / a.length).toFixed(2); });
+
+  const c = chart("chDaily");
+  c.setOption(baseOpt({
+    grid: { left: 8, right: 16, top: 34, bottom: 8, containLabel: true },
+    tooltip: { ...baseOpt().tooltip, formatter: ps => {
+      const i = ps[0].dataIndex;
+      return `<b>${DAYS[days[i]].label}</b>` + tipRow(T.s[0], "Tagesmittel", `${f2.format(avg[i])} €`) +
+        tipRow(T.text3, "Niedrigste / höchste Stunde", `${f2.format(mins[i])} / ${f2.format(mins[i] + spans[i])} €`) +
+        tipRow(T.text3, "Gleitend 30 Tage", `${f2.format(avg30[i])} €`);
+    } },
+    legend: { ...baseOpt().legend, data: ["Tagesmittel", "Gleitender Ø 30 Tage"] },
+    xAxis: catAxis(labels, { boundaryGap: false, axisLabel: { color: T.text2, formatter: v => { const [y, m] = v.split("-"); return `${MONTHS[+m - 1]} ${y}`; } } }),
+    yAxis: valAxis("€/MWh"),
+    dataZoom: [{ type: "inside" }],
+    series: [
+      { name: "Tagesmittel", type: "line", data: avg, symbol: "none", lineStyle: { width: 1.5, color: T.s[0] }, itemStyle: { color: T.s[0] }, markLine: zeroLine() },
+      { name: "Gleitender Ø 30 Tage", type: "line", data: avg30, symbol: "none", lineStyle: { width: 2, color: T.text, type: "dashed" }, itemStyle: { color: T.text } },
+    ],
+  }), true);
+
+  const r = chart("chResidual");
+  r.setOption(baseOpt({
+    grid: { left: 8, right: 16, top: 30, bottom: 34, containLabel: true },
+    legend: { ...baseOpt().legend, data: ["Ø Residuallast (GW)"] },
+    tooltip: { ...baseOpt().tooltip, formatter: ps => `<b>${DAYS[days[ps[0].dataIndex]].label}</b>` + tipRow(T.s[1], "Ø Residuallast", `${f1.format(ps[0].value)} GW`) },
+    xAxis: catAxis(labels, { boundaryGap: false, axisLabel: { show: false } }),
+    yAxis: valAxis("GW"),
+    dataZoom: zoomSlider(0, 100),
+    series: [{ name: "Ø Residuallast (GW)", type: "line", data: res, symbol: "none", lineStyle: { width: 1.2, color: T.s[1] }, itemStyle: { color: T.s[1] },
+      areaStyle: { color: T.s[1], opacity: 0.12 }, markLine: zeroLine() }],
+  }), true);
+  c.group = r.group = "daily"; echarts.connect("daily");
+}
+
+function renderMonthYear() {
+  const years = [2023, 2024, 2025];
+  const ix = idx({ use: ["daytype"] });
+  const sum = {}, cnt = {};
+  for (const y of years) { sum[y] = new Array(12).fill(0); cnt[y] = new Array(12).fill(0); }
+  for (const i of ix) { sum[Y[i]][M[i]] += PRICE[i]; cnt[Y[i]][M[i]]++; }
+  const c = chart("chMonthYear");
+  c.setOption(baseOpt({
+    tooltip: { ...baseOpt().tooltip, axisPointer: { type: "shadow" }, valueFormatter: v => `${f2.format(v)} €/MWh` },
+    xAxis: catAxis(MONTHS), yAxis: valAxis("€/MWh"),
+    series: years.map(y => ({ name: String(y), type: "bar", barGap: "10%", barCategoryGap: "28%",
+      data: sum[y].map((s, m) => cnt[y][m] ? +(s / cnt[y][m]).toFixed(2) : null),
+      itemStyle: { color: T.year[y], borderRadius: [3, 3, 0, 0] },
+      emphasis: { focus: "series" } })),
+  }), true);
+}
+
+function renderMix() {
+  const ix = idx({ use: ["year"] });
+  const map = new Map();
+  for (const i of ix) {
+    const k = Y[i] * 100 + M[i]; let r = map.get(k);
+    if (!r) { r = { on: 0, off: 0, sol: 0, load: 0 }; map.set(k, r); }
+    r.on += D.hourly.wind_on[i]; r.off += D.hourly.wind_off[i]; r.sol += SOLAR[i]; r.load += LOAD[i];
+  }
+  const keys = [...map.keys()].sort((a, b) => a - b);
+  const lab = keys.map(k => `${MONTHS[k % 100]} ${String(Math.floor(k / 100)).slice(2)}`);
+  const twh = f => keys.map(k => +(map.get(k)[f] / 1e6).toFixed(2));
+  const c = chart("chMix");
+  c.setOption(baseOpt({
+    tooltip: { ...baseOpt().tooltip, axisPointer: { type: "shadow" }, valueFormatter: v => `${f2.format(v)} TWh` },
+    xAxis: catAxis(lab), yAxis: valAxis("TWh"),
+    series: [
+      { name: "Wind onshore", type: "bar", stack: "g", data: twh("on"), itemStyle: { color: T.s[0], borderColor: T.surface, borderWidth: 1 } },
+      { name: "Wind offshore", type: "bar", stack: "g", data: twh("off"), itemStyle: { color: T.s[2], borderColor: T.surface, borderWidth: 1 } },
+      { name: "Solar", type: "bar", stack: "g", data: twh("sol"), itemStyle: { color: T.s[1], borderColor: T.surface, borderWidth: 1, borderRadius: [3, 3, 0, 0] } },
+      { name: "Last", type: "line", data: twh("load"), symbol: "circle", symbolSize: 5, lineStyle: { color: T.text, width: 2 }, itemStyle: { color: T.text } },
+    ],
+  }), true);
+}
+
+// ---------- Preismuster ----------
+function renderDuck() {
+  const ix = idx({ use: ["year", "daytype"] });
+  const s = SEASONS.map(() => new Array(24).fill(0)), n = SEASONS.map(() => new Array(24).fill(0));
+  for (const i of ix) { s[SEASON[i]][D.hourly.h[i]] += PRICE[i]; n[SEASON[i]][D.hourly.h[i]]++; }
+  const prof = s.map((row, k) => row.map((v, h) => n[k][h] ? +(v / n[k][h]).toFixed(2) : null));
+  const c = chart("chDuck");
+  c.setOption(baseOpt({
+    grid: { left: 8, right: 16, top: 34, bottom: 8, containLabel: true },
+    tooltip: { ...baseOpt().tooltip, valueFormatter: v => `${f2.format(v)} €/MWh` },
+    xAxis: catAxis([...Array(24).keys()].map(h => `${h}:00`), { boundaryGap: false }),
+    yAxis: valAxis("€/MWh"),
+    series: SEASONS.map((name, k) => ({ name, type: "line", data: prof[k], symbol: "circle", symbolSize: 5, smooth: 0.2,
+      lineStyle: { width: 2.2, color: T.season[name] }, itemStyle: { color: T.season[name] },
+      emphasis: { focus: "series" } })),
+  }), true);
+  const sm = prof[2], wi = prof[0];
+  const minS = Math.min(...sm.filter(v => v !== null)), maxS = Math.max(...sm.filter(v => v !== null));
+  document.getElementById("duckInsight").innerHTML = isFinite(minS)
+    ? `Im <b>Sommer</b> fällt der Preis mittags auf <b>${f0.format(minS)} €/MWh</b> und steigt abends auf <b>${f0.format(maxS)} €/MWh</b>. Die Spreizung von ${f0.format(maxS - minS)} € ist das Geschäftsmodell von Batteriespeichern. Im <b>Winter</b> fehlt das Solar-Mittagstief, dort gibt es eine Morgen- und eine Abendspitze.`
+    : "Für diese Filterkombination liegen keine Sommerdaten vor.";
+}
+
+function heatmapOpt(xLabels, yLabels, data, min, max) {
+  return baseOpt({
+    legend: { show: false },
+    grid: { left: 8, right: 8, top: 8, bottom: 56, containLabel: true },
+    tooltip: { trigger: "item", backgroundColor: T.surface, borderColor: T.border, textStyle: { color: T.text, fontSize: 12 },
+      formatter: p => `<b>${xLabels[p.value[0]]}, ${yLabels[p.value[1]]}</b><br>Ø ${f2.format(p.value[2])} €/MWh` },
+    xAxis: catAxis(xLabels, { splitArea: { show: false } }),
+    yAxis: catAxis(yLabels, { inverse: true }),
+    visualMap: { min, max, calculable: false, orient: "horizontal", left: "center", bottom: 0, itemHeight: 220, itemWidth: 12,
+      text: [`${f0.format(max)} €`, `${f0.format(min)} €`], textStyle: { color: T.text2 }, inRange: { color: T.seq } },
+    series: [{ type: "heatmap", data, itemStyle: { borderColor: T.surface, borderWidth: 1 }, emphasis: { itemStyle: { borderColor: T.text, borderWidth: 1 } } }],
+  });
+}
+function grid2(ix, xOf, nx) {
+  const s = Array.from({ length: 24 }, () => new Array(nx).fill(0)), n = Array.from({ length: 24 }, () => new Array(nx).fill(0));
+  for (const i of ix) { const x = xOf(i), h = D.hourly.h[i]; s[h][x] += PRICE[i]; n[h][x]++; }
+  const data = []; let lo = Infinity, hi = -Infinity;
+  for (let h = 0; h < 24; h++) for (let x = 0; x < nx; x++) if (n[h][x]) { const v = +(s[h][x] / n[h][x]).toFixed(2); data.push([x, h, v]); lo = Math.min(lo, v); hi = Math.max(hi, v); }
+  return { data, lo: Math.floor(lo / 10) * 10, hi: Math.ceil(hi / 10) * 10 };
+}
+function renderHeatmaps() {
+  const hours = [...Array(24).keys()].map(h => `${String(h).padStart(2, "0")} Uhr`);
+  const a = grid2(idx({ use: ["year", "daytype"] }), i => M[i], 12);
+  chart("chHeatMonth").setOption(heatmapOpt(MONTHS, hours, a.data, a.lo, a.hi), true);
+  const b = grid2(idx({ use: ["year", "season"] }), i => DOW[i], 7);
+  chart("chHeatDow").setOption(heatmapOpt(DOWS, hours, b.data, b.lo, b.hi), true);
+}
+
+function renderHist() {
+  const ix = idx();
+  const lo = -100, hi = 300, w = 10, nb = (hi - lo) / w;
+  const bins = new Array(nb + 2).fill(0);
+  for (const i of ix) { const p = PRICE[i]; const b = p < lo ? 0 : p >= hi ? nb + 1 : 1 + Math.floor((p - lo) / w); bins[b]++; }
+  const labels = ["< −100", ...Array.from({ length: nb }, (_, k) => `${lo + k * w}`), "≥ 300"];
+  const c = chart("chHist");
+  c.setOption(baseOpt({
+    legend: { show: false },
+    tooltip: { ...baseOpt().tooltip, axisPointer: { type: "shadow" }, formatter: ps => {
+      const k = ps[0].dataIndex; const range = k === 0 ? "unter −100 €" : k === nb + 1 ? "ab 300 €" : `${lo + (k - 1) * w} bis ${lo + k * w} €`;
+      return `<b>${range}</b><br>${f0.format(ps[0].value)} Stunden`; } },
+    xAxis: catAxis(labels, { axisLabel: { color: T.text2, interval: 4 } }), yAxis: valAxis("Stunden"),
+    series: [{ type: "bar", barCategoryGap: "8%", data: bins.map((v, k) => ({ value: v, itemStyle: { color: (k === 0 || lo + (k - 1) * w < 0) ? T.s[1] : T.s[0], borderRadius: [2, 2, 0, 0] } })) }],
+  }), true);
+}
+
+// ---------- Erneuerbare ----------
+function renderScatter() {
+  const ix = idx();
+  const step = Math.max(1, Math.floor(ix.length / 5000));
+  const pts = [];
+  for (let k = 0; k < ix.length; k += step) { const i = ix[k]; pts.push([+(RES[i] / 1000).toFixed(2), PRICE[i], i]); }
+  const bins = new Map();
+  for (const i of ix) { const b = Math.floor(RES[i] / 2500); if (!bins.has(b)) bins.set(b, []); bins.get(b).push(PRICE[i]); }
+  const med = [...bins.entries()].filter(([, v]) => v.length >= 15).sort((a, b) => a[0] - b[0]).map(([b, v]) => {
+    v.sort((x, y) => x - y); return [(b * 2.5 + 1.25), +v[Math.floor(v.length / 2)].toFixed(2)]; });
+  const c = chart("chScatter");
+  c.setOption(baseOpt({
+    tooltip: { trigger: "item", backgroundColor: T.surface, borderColor: T.border, textStyle: { color: T.text, fontSize: 12 },
+      formatter: p => p.seriesIndex === 0 ? `<b>${stamp(p.value[2])}</b><br>Residuallast ${f1.format(p.value[0])} GW<br>Preis ${f2.format(p.value[1])} €/MWh`
+        : `Median bei ${f1.format(p.value[0])} GW: <b>${f2.format(p.value[1])} €/MWh</b>` },
+    xAxis: valAxis("Residuallast (GW)", { nameLocation: "middle", nameGap: 26, splitLine: { show: false } }),
+    yAxis: valAxis("€/MWh", { min: -200, max: 400 }),
+    series: [
+      { name: "Stunden", type: "scatter", clip: true, data: pts, symbolSize: 4, itemStyle: { color: T.s[0], opacity: 0.28 }, large: true, markLine: zeroLine() },
+      { name: "Median", type: "line", data: med, symbol: "circle", symbolSize: 6, lineStyle: { width: 3, color: T.s[1] }, itemStyle: { color: T.s[1], borderColor: T.surface, borderWidth: 2 } },
+    ],
+  }), true);
+}
+
+function renderShare() {
+  const ix = idx();
+  const s = new Array(11).fill(0), n = new Array(11).fill(0), neg = new Array(11).fill(0);
+  for (const i of ix) { const sh = (WIND[i] + SOLAR[i]) / LOAD[i] * 100; const b = Math.min(10, Math.floor(sh / 10)); s[b] += PRICE[i]; n[b]++; if (PRICE[i] < 0) neg[b]++; }
+  const labels = s.map((_, b) => b === 10 ? "≥100 %" : `${b * 10}–${b * 10 + 10} %`);
+  const c = chart("chShare");
+  c.setOption(baseOpt({
+    legend: { show: false },
+    grid: { left: 8, right: 40, top: 10, bottom: 8, containLabel: true },
+    tooltip: { ...baseOpt().tooltip, axisPointer: { type: "shadow" }, formatter: ps => {
+      const b = ps[0].dataIndex; return `<b>EE-Anteil ${labels[b]}</b><br>Ø Preis ${f2.format(ps[0].value)} €/MWh<br>${f0.format(n[b])} Stunden · davon ${f0.format(n[b] ? neg[b] / n[b] * 100 : 0)} % negativ`; } },
+    yAxis: catAxis(labels, { inverse: true }), xAxis: valAxis("", { splitLine: { lineStyle: { color: T.grid } } }),
+    series: [{ type: "bar", barCategoryGap: "22%",
+      data: s.map((v, b) => n[b] ? { value: +(v / n[b]).toFixed(1), itemStyle: { color: v < 0 ? T.s[1] : T.s[0], borderRadius: v < 0 ? [3, 0, 0, 3] : [0, 3, 3, 0] } } : null),
+      label: { show: true, position: "right", color: T.text2, formatter: p => f0.format(p.value) }, markLine: { ...zeroLine(), data: [{ xAxis: 0 }] } }],
+  }), true);
+}
+
+function renderCapture() {
+  const ix = idx({ use: ["year", "daytype"] });
+  const map = new Map();
+  for (const i of ix) {
+    const k = Y[i] * 100 + M[i]; let r = map.get(k);
+    if (!r) { r = { p: 0, n: 0, ps: 0, s: 0, pw: 0, w: 0 }; map.set(k, r); }
+    r.p += PRICE[i]; r.n++; r.ps += PRICE[i] * SOLAR[i]; r.s += SOLAR[i]; r.pw += PRICE[i] * WIND[i]; r.w += WIND[i];
+  }
+  const keys = [...map.keys()].sort((a, b) => a - b);
+  const lab = keys.map(k => `${MONTHS[k % 100]} ${String(Math.floor(k / 100)).slice(2)}`);
+  const base = keys.map(k => +(map.get(k).p / map.get(k).n).toFixed(2));
+  const sol = keys.map(k => +(map.get(k).ps / map.get(k).s).toFixed(2));
+  const wnd = keys.map(k => +(map.get(k).pw / map.get(k).w).toFixed(2));
+  const c = chart("chCapture");
+  c.setOption(baseOpt({
+    tooltip: { ...baseOpt().tooltip, formatter: ps => {
+      const i = ps[0].dataIndex;
+      return `<b>${lab[i]}</b>` + ps.map(p => tipRow(p.color, p.seriesName, `${f2.format(p.value)} €`)).join("") +
+        `<div style="margin-top:4px;color:${T.text2}">Solar Capture Rate ${f0.format(sol[i] / base[i] * 100)} %</div>`; } },
+    xAxis: catAxis(lab, { boundaryGap: false }), yAxis: valAxis("€/MWh"),
+    series: [
+      { name: "Base-Preis", type: "line", data: base, symbol: "none", lineStyle: { width: 2.2, color: T.text }, itemStyle: { color: T.text } },
+      { name: "Wind-Capture-Preis", type: "line", data: wnd, symbol: "none", lineStyle: { width: 2, color: T.s[0] }, itemStyle: { color: T.s[0] } },
+      { name: "Solar-Capture-Preis", type: "line", data: sol, symbol: "none", lineStyle: { width: 2, color: T.s[1] }, itemStyle: { color: T.s[1] },
+        areaStyle: { color: T.s[1], opacity: 0.06 } },
+    ],
+  }), true);
+  const k = kpiSet(ix);
+  document.getElementById("captureInsight").innerHTML =
+    `Solarstrom erzielte im gewählten Zeitraum im Schnitt nur <b>${f2.format(k.solarCap)} €/MWh</b>, also <b>${f0.format(k.solarCR)} %</b> des Base-Preises. Wind kommt auf ${f0.format(k.windCR)} %. Weil alle PV-Anlagen gleichzeitig einspeisen, drücken sie ihren eigenen Marktwert (<b>Kannibalisierungseffekt</b>), besonders in sonnigen Sommermonaten.`;
+}
+
+// ---------- Negative Preise ----------
+function negByDay(ix) {
+  const map = new Map();
+  for (const i of ix) {
+    const d = DAYKEY[i]; let r = map.get(d);
+    if (!r) { r = { neg: 0, min: Infinity, s: 0, n: 0, sol: 0, wind: 0 }; map.set(d, r); }
+    if (PRICE[i] < 0) r.neg++; r.min = Math.min(r.min, PRICE[i]); r.s += PRICE[i]; r.n++; r.sol += SOLAR[i]; r.wind += WIND[i];
+  }
+  return map;
+}
+function renderCalendar() {
+  const years = state.year === "all" ? [2023, 2024, 2025] : [+state.year];
+  const map = negByDay(idx({ use: ["year"] }));
+  const el = document.getElementById("chCalendar");
+  const mobile = el.clientWidth < 700;
+  const cell = mobile ? 6 : Math.max(10, Math.min(19, Math.floor((el.clientWidth - 90) / 54)));
+  const rowH = cell * 7 + 36;
+  el.style.height = `${years.length * rowH + 60}px`;
+  const c = chart("chCalendar"); c.resize();
+  const data = [...map.entries()].map(([d, r]) => [DAYS[d].key, r.neg, d]);
+  c.setOption({
+    textStyle: { fontFamily: "Inter, system-ui, sans-serif", color: T.text2 },
+    tooltip: { trigger: "item", backgroundColor: T.surface, borderColor: T.border, textStyle: { color: T.text, fontSize: 12 },
+      formatter: p => { const r = map.get(p.value[2]); return `<b>${DAYS[p.value[2]].label} (${DOWS[DAYS[p.value[2]].dow]})</b><br>${r.neg} negative Stunden<br>Tiefstwert ${f2.format(r.min)} €/MWh<br>Ø Solar ${f1.format(r.sol / r.n / 1000)} GW · Ø Wind ${f1.format(r.wind / r.n / 1000)} GW`; } },
+    visualMap: { min: 0, max: 16, dimension: 1, calculable: false, orient: "horizontal", left: "center", bottom: 0, itemWidth: 12, itemHeight: 180,
+      text: ["16+ h", "0 h"], textStyle: { color: T.text2 }, inRange: { color: [T.surface === "#fcfcfb" ? "#f0efeb" : "#232321", ...T.seq.slice(2)] } },
+    calendar: years.map((y, k) => ({ range: String(y), top: 24 + k * rowH, left: 46, right: 10, cellSize: [mobile ? "auto" : "auto", cell],
+      orient: "horizontal", splitLine: { show: true, lineStyle: { color: T.border, width: 1 } },
+      itemStyle: { color: "transparent", borderColor: T.surface, borderWidth: 2 },
+      yearLabel: { show: true, position: "left", color: T.text, fontSize: 13, fontWeight: 600, margin: 26 },
+      monthLabel: { nameMap: MONTHS, color: T.text2, fontSize: 11 }, dayLabel: { show: !mobile, firstDay: 1, nameMap: ["S", "M", "D", "M", "D", "F", "S"], color: T.text3, fontSize: 9 } })),
+    series: years.map((y, k) => ({ type: "heatmap", coordinateSystem: "calendar", calendarIndex: k, data: data.filter(d => d[0].startsWith(String(y))) })),
+  }, true);
+}
+
+function renderNegHour() {
+  const ix = idx();
+  const cnt = new Array(24).fill(0);
+  for (const i of ix) if (PRICE[i] < 0) cnt[D.hourly.h[i]]++;
+  chart("chNegHour").setOption(baseOpt({
+    legend: { show: false },
+    tooltip: { ...baseOpt().tooltip, axisPointer: { type: "shadow" }, valueFormatter: v => `${f0.format(v)} Stunden` },
+    xAxis: catAxis([...Array(24).keys()].map(h => `${h}`), { name: "Uhr", nameLocation: "end" }), yAxis: valAxis("Stunden"),
+    series: [{ type: "bar", data: cnt, barCategoryGap: "18%", itemStyle: { color: T.s[1], borderRadius: [3, 3, 0, 0] } }],
+  }), true);
+}
+
+function renderNegMonth() {
+  const ix = idx({ use: ["daytype"] });
+  const years = [2023, 2024, 2025]; const cnt = {}; years.forEach(y => cnt[y] = new Array(12).fill(0));
+  for (const i of ix) if (PRICE[i] < 0) cnt[Y[i]][M[i]]++;
+  chart("chNegMonth").setOption(baseOpt({
+    tooltip: { ...baseOpt().tooltip, valueFormatter: v => `${f0.format(v)} Stunden` },
+    xAxis: catAxis(MONTHS, { boundaryGap: false }), yAxis: valAxis("Stunden"),
+    series: years.map(y => ({ name: String(y), type: "line", data: cnt[y], symbol: "circle", symbolSize: 6,
+      lineStyle: { width: 2.2, color: T.year[y] }, itemStyle: { color: T.year[y], borderColor: T.surface, borderWidth: 1.5 },
+      endLabel: { show: true, formatter: String(y), color: T.text2, fontSize: 11 }, emphasis: { focus: "series" } })),
+    grid: { left: 8, right: 44, top: 34, bottom: 8, containLabel: true },
+  }), true);
+}
+
+function renderNegTable() {
+  const map = negByDay(idx());
+  const rows = [...map.entries()].filter(([, r]) => r.neg > 0).sort((a, b) => b[1].neg - a[1].neg || a[1].min - b[1].min).slice(0, 10);
+  const el = document.getElementById("tblNeg");
+  if (!rows.length) { el.innerHTML = "<tr><td>Keine negativen Preise für diese Filterkombination.</td></tr>"; return; }
+  el.innerHTML = `<thead><tr><th>#</th><th>Datum</th><th>Wochentag</th><th class="num">Negative Stunden</th><th class="num">Tiefstpreis</th><th class="num">Ø Preis</th><th class="num">Ø Solar</th><th class="num">Ø Wind</th></tr></thead><tbody>` +
+    rows.map(([d, r], k) => `<tr><td>${k + 1}</td><td>${DAYS[d].label}</td><td>${["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"][DAYS[d].dow]}</td>
+      <td class="num">${r.neg}</td><td class="num">${f2.format(r.min)} €</td><td class="num">${f2.format(r.s / r.n)} €</td>
+      <td class="num">${f1.format(r.sol / r.n / 1000)} GW</td><td class="num">${f1.format(r.wind / r.n / 1000)} GW</td></tr>`).join("") + "</tbody>";
+}
+
+// ---------- Prognose ----------
+let fcRendered = false;
+function renderForecast() {
+  if (fcRendered) return; fcRendered = true;
+  const F = D.forecast; if (!F) return;
+  const s0 = F.start_index, pred = F.pred, n = pred.length;
+  const act = Array.from({ length: n }, (_, k) => PRICE[s0 + k]);
+  const lab = Array.from({ length: n }, (_, k) => stamp(s0 + k));
+  const m = F.metrics, xgb = m["XGBoost"], naive = m["Naiv (Vortag)"];
+  const imp = (1 - xgb.MAE / naive.MAE) * 100;
+  document.getElementById("fcKpis").innerHTML = [
+    ["MAE XGBoost", f2.format(xgb.MAE), "€/MWh", "Mittlerer absoluter Fehler 2025"],
+    ["RMSE XGBoost", f2.format(xgb.RMSE), "€/MWh", "Gewichtet große Fehler stärker"],
+    ["Verbesserung", "−" + f0.format(imp), "%", `ggü. naiver Vortagsprognose (MAE ${f2.format(naive.MAE)} €)`],
+    ["Testumfang", f0.format(n), "Stunden", `Training ${F.train_period} · Test ${F.test_period}`],
+  ].map(([l, v, u, foot]) => `<div class="kpi"><div class="label">${l}</div><div class="value">${v}<small>${u}</small></div><div class="foot">${foot}</div></div>`).join("");
+
+  const mayStart = lab.findIndex(l => l.startsWith("05.05.2025"));
+  const startPct = mayStart / n * 100, endPct = (mayStart + 24 * 14) / n * 100;
+  chart("chForecast").setOption(baseOpt({
+    grid: { left: 8, right: 16, top: 34, bottom: 40, containLabel: true },
+    tooltip: { ...baseOpt().tooltip, formatter: ps => `<b>${lab[ps[0].dataIndex]}</b>` + ps.map(p => tipRow(p.color, p.seriesName, `${f2.format(p.value)} €`)).join("") +
+      tipRow("transparent", "Fehler", `${f2.format(ps[1].value - ps[0].value)} €`) },
+    xAxis: catAxis(lab, { boundaryGap: false, axisLabel: { color: T.text2, formatter: v => v.slice(0, 6) } }),
+    yAxis: valAxis("€/MWh"), dataZoom: zoomSlider(startPct, endPct),
+    series: [
+      { name: "Ist-Preis", type: "line", data: act, symbol: "none", sampling: "lttb", lineStyle: { width: 2, color: T.s[0] }, itemStyle: { color: T.s[0] }, markLine: zeroLine() },
+      { name: "XGBoost-Prognose", type: "line", data: pred, symbol: "none", sampling: "lttb", lineStyle: { width: 2, color: T.s[1], type: [5, 3] }, itemStyle: { color: T.s[1] } },
+    ],
+  }), true);
+
+  const names = Object.keys(m).sort((a, b) => m[b].MAE - m[a].MAE);
+  chart("chModels").setOption(baseOpt({
+    legend: { show: false }, grid: { left: 8, right: 44, top: 8, bottom: 8, containLabel: true },
+    tooltip: { ...baseOpt().tooltip, axisPointer: { type: "shadow" }, formatter: ps => { const k = names[ps[0].dataIndex]; return `<b>${k}</b><br>MAE ${f2.format(m[k].MAE)} € · RMSE ${f2.format(m[k].RMSE)} €`; } },
+    yAxis: catAxis(names), xAxis: valAxis(""),
+    series: [{ type: "bar", barCategoryGap: "35%", data: names.map(k => ({ value: m[k].MAE, itemStyle: { color: k === "XGBoost" ? T.s[0] : T.neutral, borderRadius: [0, 3, 3, 0] } })),
+      label: { show: true, position: "right", color: T.text2, formatter: p => f1.format(p.value) } }],
+  }), true);
+
+  const fi = Object.entries(F.importance).sort((a, b) => a[1] - b[1]);
+  chart("chImportance").setOption(baseOpt({
+    legend: { show: false }, grid: { left: 8, right: 48, top: 8, bottom: 8, containLabel: true },
+    tooltip: { ...baseOpt().tooltip, axisPointer: { type: "shadow" }, valueFormatter: v => `${f1.format(v * 100)} %` },
+    yAxis: catAxis(fi.map(([k]) => FEATURE_LABELS[k] || k)), xAxis: valAxis("", { axisLabel: { color: T.text2, formatter: v => `${f0.format(v * 100)} %` } }),
+    series: [{ type: "bar", barCategoryGap: "28%", data: fi.map(([, v]) => v), itemStyle: { color: T.s[0], borderRadius: [0, 3, 3, 0] },
+      label: { show: true, position: "right", color: T.text2, formatter: p => `${f1.format(p.value * 100)} %` } }],
+  }), true);
+
+  const eh = new Array(24).fill(0), nh = new Array(24).fill(0), em = new Array(12).fill(0), nm = new Array(12).fill(0);
+  for (let k = 0; k < n; k++) { const i = s0 + k, e = Math.abs(pred[k] - act[k]); eh[D.hourly.h[i]] += e; nh[D.hourly.h[i]]++; em[M[i]] += e; nm[M[i]]++; }
+  const barOpt = (labels, vals) => baseOpt({ legend: { show: false },
+    tooltip: { ...baseOpt().tooltip, axisPointer: { type: "shadow" }, valueFormatter: v => `${f2.format(v)} €/MWh` },
+    xAxis: catAxis(labels), yAxis: valAxis("€/MWh"),
+    series: [{ type: "bar", data: vals.map(v => +v.toFixed(2)), barCategoryGap: "20%", itemStyle: { color: T.s[0], borderRadius: [3, 3, 0, 0] } }] });
+  chart("chErrHour").setOption(barOpt([...Array(24).keys()].map(String), eh.map((v, h) => v / nh[h])), true);
+  chart("chErrMonth").setOption(barOpt(MONTHS, em.map((v, k) => v / nm[k])), true);
+}
+
+// ---------- Methodik ----------
+function renderQuality() {
+  const yrs = [2023, 2024, 2025];
+  const per = yrs.map(y => idx({ use: ["year"], year: String(y) }).length);
+  document.getElementById("tblQuality").innerHTML =
+    `<thead><tr><th>Prüfung</th><th class="num">Ergebnis</th></tr></thead><tbody>
+     <tr><td>Stunden gesamt</td><td class="num">${f0.format(N)}</td></tr>
+     ${yrs.map((y, k) => `<tr><td>Stunden ${y}</td><td class="num">${f0.format(per[k])}</td></tr>`).join("")}
+     <tr><td>Zeitraum (Ortszeit)</td><td class="num">${DAYS[0].label} – ${DAYS[DAYS.length - 1].label}</td></tr>
+     <tr><td>Fehlende Stunden / Duplikate / fehlende Werte</td><td class="num">0 / 0 / 0</td></tr>
+     <tr><td>Preisauflösung</td><td class="num">60 min, ab 01.10.2025 15 min → Stundenmittel</td></tr></tbody>`;
+}
+
+// ---------- Steuerung ----------
+const renderers = {
+  overview: [renderKpis, renderDaily, renderMonthYear, renderMix],
+  patterns: [renderDuck, renderHeatmaps, renderHist],
+  renewables: [renderScatter, renderShare, renderCapture],
+  negative: [renderCalendar, renderNegHour, renderNegMonth, renderNegTable],
+  forecast: [renderForecast],
+  method: [renderQuality],
+};
+const dirty = new Set(Object.keys(renderers));
+function render(all = false) {
+  if (all) { Object.keys(renderers).forEach(t => dirty.add(t)); fcRendered = false; }
+  if (dirty.has(state.tab)) {
+    renderers[state.tab].forEach(fn => { try { fn(); } catch (e) { console.error(fn.name, e); } });
+    dirty.delete(state.tab);
+  }
+}
+function onFilter() {
+  Object.keys(renderers).forEach(t => { if (t !== "forecast" && t !== "method") dirty.add(t); });
+  render();
+  try { const p = new URLSearchParams({ tab: state.tab, year: state.year, season: state.season, daytype: state.daytype }); history.replaceState(null, "", "#" + p); } catch (e) {}
+}
+
+function buildFilters() {
+  document.querySelectorAll(".seg[data-filter]").forEach(seg => {
+    const key = seg.dataset.filter;
+    seg.innerHTML = FILTERS[key].map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${state[key] === v}">${l}</button>`).join("");
+    seg.addEventListener("click", e => {
+      const b = e.target.closest("button"); if (!b) return;
+      state[key] = b.dataset.v;
+      seg.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === state[key]));
+      onFilter();
+    });
+  });
+  document.querySelectorAll(".chips[data-uses]").forEach(el => {
+    const uses = el.dataset.uses.split(" ").filter(Boolean);
+    el.innerHTML = uses.length ? uses.map(u => `<span class="chip">Filter: ${FILTER_NAMES[u]}</span>`).join("") : "";
+  });
+}
+function selectTab(tab) {
+  state.tab = tab;
+  document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === tab));
+  document.querySelectorAll("section.panel").forEach(s => s.classList.toggle("active", s.id === "tab-" + tab));
+  document.getElementById("filters").style.visibility = (tab === "forecast" || tab === "method") ? "hidden" : "visible";
+  render();
+  requestAnimationFrame(() => Object.values(charts).forEach(c => c.resize()));
+  onFilter();
+}
+
+function restoreFromHash() {
+  try {
+    const p = new URLSearchParams(location.hash.slice(1));
+    for (const k of ["year", "season", "daytype"]) { const v = p.get(k); if (v && FILTERS[k].some(([x]) => x === v)) state[k] = v; }
+    const t = p.get("tab"); if (t && renderers[t]) state.tab = t;
+  } catch (e) {}
+}
+
+document.getElementById("themeBtn").addEventListener("click", () => {
+  themeMode = themeModes[(themeModes.indexOf(themeMode) + 1) % 3];
+  try { localStorage.setItem("ea-theme", themeMode); } catch (e) {}
+  applyTheme(); readTheme(); render(true);
+});
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (themeMode === "auto") { readTheme(); render(true); } });
+
+fetch("data/dashboard.json")
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(data => {
+    prepare(data); readTheme(); restoreFromHash(); buildFilters();
+    document.getElementById("loading").remove();
+    document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => selectTab(b.dataset.tab)));
+    document.getElementById("footer").textContent = `Daten: ${data.meta.source} · Stand ${data.meta.generated}`;
+    selectTab(state.tab);
+    window.addEventListener("hashchange", () => {
+      restoreFromHash();
+      document.querySelectorAll(".seg[data-filter]").forEach(seg => seg.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === state[seg.dataset.filter])));
+      Object.keys(renderers).forEach(t => { if (t !== "forecast" && t !== "method") dirty.add(t); });
+      selectTab(state.tab);
+    });
+  })
+  .catch(err => {
+    document.getElementById("loading").innerHTML = `Die Daten konnten nicht geladen werden (${err.message}).<br>Lokal bitte über einen Webserver öffnen, z. B. <code>python -m http.server -d docs</code>.`;
+  });
+})();
+</script>
+</body>
+</html>

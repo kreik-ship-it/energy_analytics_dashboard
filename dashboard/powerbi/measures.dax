@@ -1,0 +1,221 @@
+// =====================================================================
+//  Energy Analytics – DAX-Measures und berechnete Spalten
+//  Datenquelle: database/energy_analytics.db (SQLite)
+//  Tabellen: energy_data (Fakten, 1 Zeile/Stunde), dim_date (1 Zeile/Tag),
+//            forecast_predictions (Prognose 2025), model_metrics
+//
+//  Anlage: Modellierung > Neue Tabelle  ->  _Measures = { BLANK() }
+//          und alle Measures dort ablegen (Anzeigeordner siehe Kommentare).
+// =====================================================================
+
+
+// ---------------------------------------------------------------------
+//  Berechnete Spalten in energy_data
+// ---------------------------------------------------------------------
+
+// Lastprofil nach EEX-Definition (Peak = Mo–Fr 8–20 Uhr)
+Lastprofil =
+IF (
+    energy_data[is_weekend] = 0
+        && energy_data[hour] >= 8
+        && energy_data[hour] < 20,
+    "Peak",
+    "Off-Peak"
+)
+
+Tagtyp = IF ( energy_data[is_weekend] = 1, "Wochenende", "Werktag" )
+
+// Klasse des Anteils Wind + Solar an der Last (0, 10, …, 100)
+EE-Klasse Sort = MIN ( INT ( energy_data[renewable_share_pct] / 10 ), 10 ) * 10
+
+EE-Klasse =
+VAR k = energy_data[EE-Klasse Sort]
+RETURN IF ( k = 100, "≥100 %", k & "–" & ( k + 10 ) & " %" )
+// -> Spaltentools > "Nach Spalte sortieren" = EE-Klasse Sort
+
+Residuallast-Segment =
+SWITCH (
+    TRUE (),
+    energy_data[residual_load] < 0,     "1 negativ (< 0 GW)",
+    energy_data[residual_load] < 15000, "2 niedrig (0–15 GW)",
+    energy_data[residual_load] < 30000, "3 mittel (15–30 GW)",
+    energy_data[residual_load] < 45000, "4 hoch (30–45 GW)",
+    "5 sehr hoch (> 45 GW)"
+)
+
+// 10-€-Klassen für das Histogramm, Ränder gekappt
+Preisklasse =
+VAR p = energy_data[price]
+RETURN
+    SWITCH (
+        TRUE (),
+        p < -100, -110,
+        p >= 300, 300,
+        FLOOR ( p, 10 )
+    )
+
+Stunde Label = FORMAT ( energy_data[hour], "00" ) & ":00"
+
+
+// ---------------------------------------------------------------------
+//  Anzeigeordner "1 Preise"
+// ---------------------------------------------------------------------
+
+Ø Preis = AVERAGE ( energy_data[price] )
+
+Peak-Preis =
+CALCULATE ( [Ø Preis], KEEPFILTERS ( energy_data[Lastprofil] = "Peak" ) )
+
+Off-Peak-Preis =
+CALCULATE ( [Ø Preis], KEEPFILTERS ( energy_data[Lastprofil] = "Off-Peak" ) )
+
+Peak/Off-Peak-Spread = [Peak-Preis] - [Off-Peak-Preis]
+
+Höchster Preis = MAX ( energy_data[price] )
+
+Niedrigster Preis = MIN ( energy_data[price] )
+
+Zeitpunkt Höchstpreis =
+VAR t =
+    MAXX ( TOPN ( 1, energy_data, energy_data[price], DESC ), energy_data[timestamp_local] )
+RETURN FORMAT ( t, "DD.MM.YYYY, HH:mm" ) & " Uhr"
+
+Zeitpunkt Tiefstpreis =
+VAR t =
+    MAXX ( TOPN ( 1, energy_data, energy_data[price], ASC ), energy_data[timestamp_local] )
+RETURN FORMAT ( t, "DD.MM.YYYY, HH:mm" ) & " Uhr"
+
+// Ø Differenz zwischen teuerster und günstigster Stunde eines Tages
+// (Indikator für das Arbitrage-Potenzial von Batteriespeichern)
+Ø Tagesspanne =
+AVERAGEX (
+    VALUES ( dim_date[date] ),
+    CALCULATE ( MAX ( energy_data[price] ) - MIN ( energy_data[price] ) )
+)
+
+Ø Preis 30 Tage gleitend =
+VAR lastDay = MAX ( dim_date[date] )
+RETURN
+    CALCULATE (
+        [Ø Preis],
+        DATESINPERIOD ( dim_date[date], lastDay, -30, DAY )
+    )
+
+
+// ---------------------------------------------------------------------
+//  Anzeigeordner "2 Vorjahresvergleich"   (dim_date als Datumstabelle markieren!)
+// ---------------------------------------------------------------------
+
+Ø Preis Vorjahr =
+CALCULATE ( [Ø Preis], SAMEPERIODLASTYEAR ( dim_date[date] ) )
+
+Δ Preis ggü. Vorjahr =
+IF ( NOT ISBLANK ( [Ø Preis Vorjahr] ), [Ø Preis] - [Ø Preis Vorjahr] )
+
+Δ Preis ggü. Vorjahr Text =
+VAR d = [Δ Preis ggü. Vorjahr]
+RETURN
+    IF (
+        ISBLANK ( d ),
+        "kein Vorjahr",
+        IF ( d >= 0, "▲ ", "▼ " ) & FORMAT ( ABS ( d ), "#,##0.0" ) & " € ggü. Vorjahr"
+    )
+
+// Farbe für bedingte Formatierung (Schriftfarbe der Karte, Feldwert)
+Δ Preis Farbe =
+IF ( [Δ Preis ggü. Vorjahr] >= 0, "#E34948", "#008300" )
+
+
+// ---------------------------------------------------------------------
+//  Anzeigeordner "3 Negative Preise"
+// ---------------------------------------------------------------------
+
+Stunden = COUNTROWS ( energy_data )
+
+Negative Stunden =
+CALCULATE ( COUNTROWS ( energy_data ), KEEPFILTERS ( energy_data[price] < 0 ) ) + 0
+
+Anteil negative Stunden = DIVIDE ( [Negative Stunden], [Stunden] )
+
+Negative Stunden Vorjahr =
+CALCULATE ( [Negative Stunden], SAMEPERIODLASTYEAR ( dim_date[date] ) )
+
+Tage mit negativen Preisen =
+COUNTROWS (
+    FILTER ( VALUES ( dim_date[date] ), [Negative Stunden] > 0 )
+)
+
+
+// ---------------------------------------------------------------------
+//  Anzeigeordner "4 Erneuerbare & Marktwerte"
+// ---------------------------------------------------------------------
+
+EE-Anteil =
+DIVIDE ( SUM ( energy_data[renewable_generation] ), SUM ( energy_data[load] ) )
+
+Wind TWh = SUM ( energy_data[wind] ) / 1e6
+Wind onshore TWh = SUM ( energy_data[wind_onshore] ) / 1e6
+Wind offshore TWh = SUM ( energy_data[wind_offshore] ) / 1e6
+Solar TWh = SUM ( energy_data[solar] ) / 1e6
+Last TWh = SUM ( energy_data[load] ) / 1e6
+
+Ø Residuallast GW = AVERAGE ( energy_data[residual_load] ) / 1000
+
+// Erzeugungsgewichteter Preis = Marktwert einer MWh Solar- bzw. Windstrom
+Solar-Capture-Preis =
+DIVIDE (
+    SUMX ( energy_data, energy_data[price] * energy_data[solar] ),
+    SUM ( energy_data[solar] )
+)
+
+Wind-Capture-Preis =
+DIVIDE (
+    SUMX ( energy_data, energy_data[price] * energy_data[wind] ),
+    SUM ( energy_data[wind] )
+)
+
+Solar Capture Rate = DIVIDE ( [Solar-Capture-Preis], [Ø Preis] )
+
+Wind Capture Rate = DIVIDE ( [Wind-Capture-Preis], [Ø Preis] )
+
+
+// ---------------------------------------------------------------------
+//  Anzeigeordner "5 Prognose"   (Tabelle forecast_predictions)
+// ---------------------------------------------------------------------
+
+Ist-Preis = AVERAGE ( forecast_predictions[actual] )
+
+Prognose XGBoost = AVERAGE ( forecast_predictions[xgboost] )
+
+MAE XGBoost =
+AVERAGEX ( forecast_predictions, ABS ( forecast_predictions[xgboost] - forecast_predictions[actual] ) )
+
+MAE Naiv (Vortag) =
+AVERAGEX ( forecast_predictions, ABS ( forecast_predictions[naive_24h] - forecast_predictions[actual] ) )
+
+MAE Lineare Regression =
+AVERAGEX ( forecast_predictions, ABS ( forecast_predictions[linear_regression] - forecast_predictions[actual] ) )
+
+RMSE XGBoost =
+SQRT ( AVERAGEX ( forecast_predictions, ( forecast_predictions[xgboost] - forecast_predictions[actual] ) ^ 2 ) )
+
+Verbesserung ggü. Naiv = 1 - DIVIDE ( [MAE XGBoost], [MAE Naiv (Vortag)] )
+
+
+// ---------------------------------------------------------------------
+//  Anzeigeordner "6 Dynamische Titel"
+// ---------------------------------------------------------------------
+
+Auswahl Zeitraum =
+VAR years = VALUES ( dim_date[year] )
+RETURN
+    IF (
+        COUNTROWS ( years ) = 1,
+        FORMAT ( MAX ( dim_date[year] ), "0" ),
+        FORMAT ( MIN ( dim_date[year] ), "0" ) & "–" & FORMAT ( MAX ( dim_date[year] ), "0" )
+    )
+
+Titel Seite 1 = "Strommarkt Deutschland · " & [Auswahl Zeitraum]
+
+Titel Tagesdetail =
+"Tagesdetail " & FORMAT ( SELECTEDVALUE ( dim_date[date] ), "DD.MM.YYYY" )

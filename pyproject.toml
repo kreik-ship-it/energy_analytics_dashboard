@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "energy-analytics"
+version = "1.0.0"
+description = "Datenpipeline, SQL-Analyse, Preisprognose und Power-BI-Dashboard für den deutschen Day-Ahead-Strommarkt"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+analysis = [
+    "matplotlib>=3.8",
+    "statsmodels>=0.14",
+    "scikit-learn>=1.4",
+    "xgboost>=2.0",
+    "jupyterlab>=4.0",
+]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+energy-pipeline = "energy_analytics.pipeline:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]

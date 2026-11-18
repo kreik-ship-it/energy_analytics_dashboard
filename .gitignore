@@ -1,9 +1,17 @@
 # Python
 __pycache__/
 *.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
 
 # Jupyter
 .ipynb_checkpoints/
+notebooks/scratch/
 
 # Virtual environments
 .venv/
@@ -13,12 +21,12 @@ env/
 # Environment variables
 .env
 
-# Raw and processed data
+# Raw and processed data (reproduzierbar über die Pipeline)
 data/raw/
 data/processed/
 
-# Python cache
-*.pyo
+# Power BI
+*.pbix.bak
 
 # Operating system
 .DS_Store

@@ -1,0 +1,66 @@
+{
+  "name": "Energy Analytics",
+  "dataColors": ["#2A78D6", "#EB6834", "#1BAF7A", "#EDA100", "#E87BA4", "#008300", "#6250D6", "#E34948"],
+  "foreground": "#0B0B0B",
+  "foregroundNeutralSecondary": "#52514E",
+  "foregroundNeutralTertiary": "#7D7C77",
+  "background": "#FCFCFB",
+  "backgroundLight": "#F4F4F1",
+  "backgroundNeutral": "#E4E3DF",
+  "tableAccent": "#2A78D6",
+  "good": "#008300",
+  "neutral": "#EDA100",
+  "bad": "#E34948",
+  "maximum": "#0D366B",
+  "center": "#6DA7EC",
+  "minimum": "#CDE2FB",
+  "textClasses": {
+    "callout": { "fontSize": 26, "fontFace": "Segoe UI Semibold", "color": "#0B0B0B" },
+    "title": { "fontSize": 12, "fontFace": "Segoe UI Semibold", "color": "#0B0B0B" },
+    "header": { "fontSize": 11, "fontFace": "Segoe UI Semibold", "color": "#0B0B0B" },
+    "label": { "fontSize": 10, "fontFace": "Segoe UI", "color": "#52514E" }
+  },
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [{ "show": true, "color": { "solid": { "color": "#FCFCFB" } }, "transparency": 0 }],
+        "border": [{ "show": true, "color": { "solid": { "color": "#E4E3DF" } }, "radius": 10 }],
+        "dropShadow": [{ "show": false }],
+        "visualHeader": [{ "show": true }],
+        "title": [{ "show": true, "fontColor": { "solid": { "color": "#0B0B0B" } }, "fontSize": 12, "alignment": "left" }],
+        "padding": [{ "top": 12, "bottom": 12, "left": 14, "right": 14 }]
+      }
+    },
+    "page": {
+      "*": {
+        "background": [{ "color": { "solid": { "color": "#F4F4F1" } }, "transparency": 0 }],
+        "outspace": [{ "color": { "solid": { "color": "#F4F4F1" } } }]
+      }
+    },
+    "lineChart": {
+      "*": {
+        "lineStyles": [{ "strokeWidth": 2, "lineStyle": "solid", "showMarker": false }],
+        "valueAxis": [{ "gridlineColor": { "solid": { "color": "#E9E8E4" } }, "gridlineThickness": 1 }],
+        "categoryAxis": [{ "gridlineShow": false }],
+        "legend": [{ "show": true, "position": "TopRight" }]
+      }
+    },
+    "clusteredColumnChart": {
+      "*": {
+        "valueAxis": [{ "gridlineColor": { "solid": { "color": "#E9E8E4" } } }],
+        "legend": [{ "show": true, "position": "TopRight" }]
+      }
+    },
+    "card": {
+      "*": {
+        "labels": [{ "color": { "solid": { "color": "#0B0B0B" } }, "fontSize": 24 }],
+        "categoryLabels": [{ "show": true, "color": { "solid": { "color": "#52514E" } }, "fontSize": 10 }]
+      }
+    },
+    "slicer": {
+      "*": {
+        "items": [{ "fontColor": { "solid": { "color": "#0B0B0B" } }, "background": { "solid": { "color": "#FCFCFB" } } }]
+      }
+    }
+  }
+}

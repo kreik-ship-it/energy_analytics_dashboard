@@ -242,3 +242,7 @@ ruff check src tests
 Daten über die [Energy-Charts API](https://api.energy-charts.info/) des Fraunhofer ISE.
 Ursprung: Bundesnetzagentur | SMARD.de, Lizenz
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+## Autor
+
+Karsten Kreilkamp
